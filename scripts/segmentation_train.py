@@ -1,4 +1,3 @@
-
 import sys
 import argparse
 sys.path.append("../")
@@ -17,41 +16,38 @@ from guided_diffusion.script_util import (
 )
 import torch as th
 from guided_diffusion.train_util import TrainLoop
-from visdom import Visdom
-viz = Visdom(use_incoming_socket=False)
 import torchvision.transforms as transforms
 
 def main():
     args = create_argparser().parse_args()
 
     dist_util.setup_dist(args)
-    logger.configure(dir = args.out_dir)
+    logger.configure(dir=args.out_dir)
 
     logger.log("creating data loader...")
 
     if args.data_name == 'ISIC':
-        tran_list = [transforms.Resize((args.image_size,args.image_size)), transforms.ToTensor(),]
+        tran_list = [transforms.Resize((args.image_size, args.image_size)), transforms.ToTensor()]
         transform_train = transforms.Compose(tran_list)
-
         ds = ISICDataset(args, args.data_dir, transform_train)
         args.in_ch = 4
     elif args.data_name == 'BRATS':
-        tran_list = [transforms.Resize((args.image_size,args.image_size)),]
+        tran_list = [transforms.Resize((args.image_size, args.image_size))]
         transform_train = transforms.Compose(tran_list)
-
         ds = BRATSDataset3D(args.data_dir, transform_train, test_flag=False)
         args.in_ch = 5
-    else :
-        tran_list = [transforms.Resize((args.image_size,args.image_size)), transforms.ToTensor(),]
+    else:
+        tran_list = [transforms.Resize((args.image_size, args.image_size)), transforms.ToTensor()]
         transform_train = transforms.Compose(tran_list)
-        print("Your current directory : ",args.data_dir)
+        print("Your current directory: ", args.data_dir)
         ds = CustomDataset(args, args.data_dir, transform_train)
         args.in_ch = 4
-        
-    datal= th.utils.data.DataLoader(
+
+    datal = th.utils.data.DataLoader(
         ds,
         batch_size=args.batch_size,
-        shuffle=True)
+        shuffle=True
+    )
     data = iter(datal)
 
     logger.log("creating model and diffusion...")
@@ -60,12 +56,12 @@ def main():
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
     if args.multi_gpu:
-        model = th.nn.DataParallel(model,device_ids=[int(id) for id in args.multi_gpu.split(',')])
-        model.to(device = th.device('cuda', int(args.gpu_dev)))
+        model = th.nn.DataParallel(model, device_ids=[int(id) for id in args.multi_gpu.split(',')])
+        model.to(device=th.device('cuda', int(args.gpu_dev)))
     else:
         model.to(dist_util.dev())
-    schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion,  maxt=args.diffusion_steps)
-
+    
+    schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion, maxt=args.diffusion_steps)
 
     logger.log("training...")
     TrainLoop(
@@ -91,7 +87,7 @@ def main():
 
 def create_argparser():
     defaults = dict(
-        data_name = 'BRATS',
+        data_name='BRATS',
         data_dir="../dataset/brats2020/training",
         schedule_sampler="uniform",
         lr=1e-4,
@@ -102,11 +98,11 @@ def create_argparser():
         ema_rate="0.9999",  # comma-separated list of EMA values
         log_interval=100,
         save_interval=5000,
-        resume_checkpoint=None, #"/results/pretrainedmodel.pt"
+        resume_checkpoint=None,  # "/results/pretrainedmodel.pt"
         use_fp16=False,
         fp16_scale_growth=1e-3,
-        gpu_dev = "0",
-        multi_gpu = None, #"0,1,2"
+        gpu_dev="0",
+        multi_gpu=None,  # "0,1,2"
         out_dir='./results/'
     )
     defaults.update(model_and_diffusion_defaults())
