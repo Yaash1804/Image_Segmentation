@@ -1,5 +1,6 @@
 import sys
 import argparse
+from argparse import Namespace
 sys.path.append("../")
 sys.path.append("./")
 from guided_diffusion.isicloader import ISICDataset
@@ -19,7 +20,79 @@ from guided_diffusion.train_util import TrainLoop
 import torchvision.transforms as transforms
 
 def main():
-    args = create_argparser().parse_args()
+    args = Namespace(
+        data_name='ISIC',
+        data_dir="data/ISIC/ISBI2016_ISIC_Part3B_Training_Data",
+        schedule_sampler="uniform",
+        lr=1e-4,
+        weight_decay=0.0,
+        lr_anneal_steps=5,
+        batch_size=8,
+        microbatch=-1,
+        ema_rate="0.9999",
+        log_interval=100,
+        save_interval=5000,
+        resume_checkpoint=None,
+        use_fp16=False,
+        fp16_scale_growth=1e-3,
+        gpu_dev="0",
+        multi_gpu=None,
+        out_dir='data/ISIC/output',
+        image_size=256,
+        num_channels=128,
+        num_res_blocks=2,
+        num_heads=1,
+        in_ch=4,
+        num_heads_upsample=-1,
+        num_head_channels=-1,
+        attention_resolutions="16",
+        channel_mult="",
+        dropout=0.0,
+        class_cond=False,
+        use_checkpoint=False,
+        use_scale_shift_norm=False,
+        resblock_updown=False,
+        use_new_attention_order=False,
+        dpm_solver=False,
+        learn_sigma=True,
+        diffusion_steps=1000,
+        noise_schedule="linear",
+        rescale_timesteps=False,
+        rescale_learned_sigmas=False,
+        timestep_respacing="",
+        version='new',
+        use_kl=False,
+        predict_xstart=False
+    )
+
+    temp = {
+        'image_size': 256,
+        'num_channels': 128,
+        'num_res_blocks': 2,
+        'num_heads': 1,
+        'in_ch': 4,
+        'num_heads_upsample': -1,
+        'num_head_channels': -1,
+        'attention_resolutions': '16',
+        'channel_mult': '',
+        'dropout': 0.0,
+        'class_cond': False,
+        'use_checkpoint': False,
+        'use_scale_shift_norm': False,
+        'resblock_updown': False,
+        'use_fp16': False,
+        'use_new_attention_order': False,
+        'learn_sigma': True,
+        'diffusion_steps': 1000,
+        'noise_schedule': 'linear',
+        'timestep_respacing': '',
+        'use_kl': False,
+        'predict_xstart': False,
+        'rescale_timesteps': False,
+        'rescale_learned_sigmas': False,
+        'dpm_solver' : True,
+        'version': 'new'
+    }
 
     dist_util.setup_dist(args)
     logger.configure(dir=args.out_dir)
@@ -52,9 +125,8 @@ def main():
 
     logger.log("creating model and diffusion...")
 
-    model, diffusion = create_model_and_diffusion(
-        **args_to_dict(args, model_and_diffusion_defaults().keys())
-    )
+    model, diffusion = create_model_and_diffusion(**temp)
+    
     if args.multi_gpu:
         model = th.nn.DataParallel(model, device_ids=[int(id) for id in args.multi_gpu.split(',')])
         model.to(device=th.device('cuda', int(args.gpu_dev)))
@@ -64,26 +136,27 @@ def main():
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion, maxt=args.diffusion_steps)
 
     logger.log("training...")
-    TrainLoop(
+
+    train_loop = TrainLoop(
         model=model,
         diffusion=diffusion,
         classifier=None,
         data=data,
         dataloader=datal,
-        batch_size=args.batch_size,
-        microbatch=args.microbatch,
-        lr=args.lr,
-        ema_rate=args.ema_rate,
-        log_interval=args.log_interval,
-        save_interval=args.save_interval,
-        resume_checkpoint=args.resume_checkpoint,
-        use_fp16=args.use_fp16,
-        fp16_scale_growth=args.fp16_scale_growth,
+        batch_size=128,
+        microbatch=2,
+        lr=0.005,
+        ema_rate=0.999,
+        log_interval=1,
+        save_interval=1000,
+        resume_checkpoint=None,
+        use_fp16=False,
+        fp16_scale_growth=1,
         schedule_sampler=schedule_sampler,
-        weight_decay=args.weight_decay,
-        lr_anneal_steps=args.lr_anneal_steps,
-    ).run_loop()
-
+        weight_decay=0.0,
+        lr_anneal_steps=500,
+    )
+    train_loop.run_loop()
 
 def create_argparser():
     defaults = dict(
@@ -94,22 +167,21 @@ def create_argparser():
         weight_decay=0.0,
         lr_anneal_steps=0,
         batch_size=1,
-        microbatch=-1,  # -1 disables microbatches
-        ema_rate="0.9999",  # comma-separated list of EMA values
+        microbatch=-1,
+        ema_rate="0.9999",
         log_interval=100,
         save_interval=5000,
-        resume_checkpoint=None,  # "/results/pretrainedmodel.pt"
+        resume_checkpoint=None,
         use_fp16=False,
         fp16_scale_growth=1e-3,
         gpu_dev="0",
-        multi_gpu=None,  # "0,1,2"
+        multi_gpu=None,
         out_dir='./results/'
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
     add_dict_to_argparser(parser, defaults)
     return parser
-
 
 if __name__ == "__main__":
     main()
