@@ -27,7 +27,7 @@ def main():
         lr=1e-4,
         weight_decay=0.0,
         lr_anneal_steps=5,
-        batch_size=8,
+        batch_size=16,
         microbatch=-1,
         ema_rate="0.9999",
         log_interval=100,
@@ -94,10 +94,10 @@ def main():
         'version': 'new'
     }
 
-    dist_util.setup_dist(args)
-    logger.configure(dir=args.out_dir)
+    #dist_util.setup_dist(args)
+    #logger.configure(dir=args.out_dir)
 
-    logger.log("creating data loader...")
+    #logger.log("creating data loader...")
 
     if args.data_name == 'ISIC':
         tran_list = [transforms.Resize((args.image_size, args.image_size)), transforms.ToTensor()]
@@ -130,31 +130,31 @@ def main():
     if args.multi_gpu:
         model = th.nn.DataParallel(model, device_ids=[int(id) for id in args.multi_gpu.split(',')])
         model.to(device=th.device('cuda', int(args.gpu_dev)))
-    else:
-        model.to(dist_util.dev())
+    '''else:
+        model.to(dist_util.dev())'''
     
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion, maxt=args.diffusion_steps)
 
     logger.log("training...")
 
     train_loop = TrainLoop(
-        model=model,
-        diffusion=diffusion,
-        classifier=None,
-        data=data,
-        dataloader=datal,
-        batch_size=128,
-        microbatch=2,
-        lr=0.005,
-        ema_rate=0.999,
-        log_interval=1,
-        save_interval=1000,
-        resume_checkpoint=None,
-        use_fp16=False,
-        fp16_scale_growth=1,
-        schedule_sampler=schedule_sampler,
-        weight_decay=0.0,
-        lr_anneal_steps=500,
+      model=model,
+      diffusion=diffusion,
+      classifier=None,
+      data=data,
+      dataloader=datal,
+      batch_size=16,  # Default value
+      microbatch=2,  # Default value
+      lr=0.001,  # Set a default learning rate
+      ema_rate=0.999,  # Set a default ema_rate
+      log_interval=1,  # Set a default log_interval
+      save_interval=1000,  # Set a default save_interval
+      resume_checkpoint=None,  # Set to None or another default if applicable
+      use_fp16=False,  # Default value
+      fp16_scale_growth=1,  # Set a default or pull from args if necessary
+      schedule_sampler=schedule_sampler,  # Set to None or another default if applicable
+      weight_decay=0.0,  # Set a default weight decay
+      lr_anneal_steps=5,  # Set a default or pull from args if necessary
     )
     train_loop.run_loop()
 
