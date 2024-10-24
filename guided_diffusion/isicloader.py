@@ -29,19 +29,24 @@ class ISICDataset(Dataset):
         return len(self.name_list)
 
     def __getitem__(self, index):
+        """Get the images"""
+        name = self.name_list[index]
+        img_path = os.path.join(self.data_path, 'ISBI2016_ISIC_Part3B_' + self.mode + '_Data', name + ".jpg")
+        msk_path = os.path.join(self.data_path, 'ISBI2016_ISIC_Part3B_' + self.mode + '_Data', name + "_Segmentation.png")
 
-      name = self.name_list[index]
-      img_path = os.path.join(self.data_path, 'ISBI2016_ISIC_Part3B_Training_Data', name + ".jpg")
-      
-      msk_path = os.path.join(self.data_path, 'ISBI2016_ISIC_Part3B_Training_Data', name + "_Segmentation.png")
-      
-      img = Image.open(img_path).convert('RGB')
-      mask = Image.open(msk_path).convert('L')
+        img = Image.open(img_path).convert('RGB')
+        mask = Image.open(msk_path).convert('L')
 
-      if self.transform:
-          state = torch.get_rng_state()
-          img = self.transform(img)
-          torch.set_rng_state(state)
-          mask = self.transform(mask)
+        # if self.mode == 'Training':
+        #     label = 0 if self.label_list[index] == 'benign' else 1
+        # else:
+        #     label = int(self.label_list[index])
 
-      return (img, mask, name)
+        if self.transform:
+            state = torch.get_rng_state()
+            img = self.transform(img)
+            torch.set_rng_state(state)
+            mask = self.transform(mask)
+
+
+        return (img, mask, name)
