@@ -154,7 +154,7 @@ def main():
       fp16_scale_growth=1,  # Set a default or pull from args if necessary
       schedule_sampler=schedule_sampler,  # Set to None or another default if applicable
       weight_decay=0.0,  # Set a default weight decay
-      lr_anneal_steps=5,  # Set a default or pull from args if necessary
+      lr_anneal_steps=500,  # Set a default or pull from args if necessary
     )
     train_loop.run_loop()
 
